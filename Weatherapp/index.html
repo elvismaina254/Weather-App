@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Weather App</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <audio id="rain-sound" loop>
+    <source src="images/calming-rain-257596.mp3" type="audio/mpeg" />
+  </audio>
+
+  <canvas id="matrix-canvas"></canvas>
+
+  <div class="card">
+    <div class="search">
+      <input type="text" placeholder="Enter city name" spellcheck="false" />
+      <button><img src="images/search.png" alt="Search" /></button>
+    </div>
+
+    <div class="feedback">
+      <p class="loading" style="display: none;">Loading...</p>
+      <p class="error" style="display: none;">City not found. Please try again.</p>
+    </div>
+
+    <div class="weather" style="display: none;">
+      <img src="images/rain.png" class="weather-icon" alt="Weather Icon" />
+      <h1 class="temp">22°C</h1>
+      <h2 class="city">New York</h2>
+      
+      <div class="details">
+        <div class="col">
+          <img src="images/humidity.png" alt="Humidity Icon" />
+          <div>
+            <p class="humidity">50%</p>
+            <p>Humidity</p>
+          </div>
+        </div>
+
+        <div class="col">
+          <img src="images/wind.png" alt="Wind Icon" />
+          <div>
+            <p class="wind">15 km/h</p>
+            <p>Wind Speed</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const apiKey = "146567964a1fb9d1aa5d129732432275";
+    const apiUrl = "https://api.openweathermap.org/data/2.5/weather?units=metric&q=";
+
+    const searchBox = document.querySelector(".search input");
+    const searchBtn = document.querySelector(".search button");
+    const weatherIcon = document.querySelector(".weather-icon");
+    const weatherSection = document.querySelector(".weather");
+    const loadingMsg = document.querySelector(".loading");
+    const errorMsg = document.querySelector(".error");
+    const rainSound = document.getElementById("rain-sound");
+
+    async function checkWeather(city) {
+      if (!city) return;
+
+      // Show loading
+      loadingMsg.style.display = "block";
+      errorMsg.style.display = "none";
+      weatherSection.style.display = "none";
+
+      try {
+        const response = await fetch(apiUrl + city + `&appid=${apiKey}`);
+
+        if (!response.ok) {
+          throw new Error("City not found");
+        }
+
+        const data = await response.json();
+
+        document.querySelector(".city").innerHTML = data.name;
+        document.querySelector(".temp").innerHTML = Math.round(data.main.temp) + `°C`;
+        document.querySelector(".humidity").innerHTML = data.main.humidity + "%";
+        document.querySelector(".wind").innerHTML = data.wind.speed + " km/h";
+
+        const mainWeather = data.weather[0].main;
+
+        if (mainWeather === "Rain" || mainWeather === "Drizzle") {
+          weatherIcon.src = "images/rain.png";
+          startMatrix();
+          rainSound.play();
+        } else {
+          stopMatrix();
+          rainSound.pause();
+          rainSound.currentTime = 0;
+
+          if (mainWeather === "Clouds") {
+            weatherIcon.src = "images/clouds.png";
+          } else if (mainWeather === "Mist") {
+            weatherIcon.src = "images/mist.png";
+          } else {
+            weatherIcon.src = "images/snow.png";
+          }
+        }
+
+        weatherSection.style.display = "block";
+      } catch (error) {
+        errorMsg.style.display = "block";
+        stopMatrix();
+        rainSound.pause();
+        rainSound.currentTime = 0;
+      } finally {
+        loadingMsg.style.display = "none";
+      }
+    }
+
+    searchBtn.addEventListener("click", () => {
+      checkWeather(searchBox.value.trim());
+    });
+
+    searchBox.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") {
+        checkWeather(searchBox.value.trim());
+      }
+    });
+
+    const matrixCanvas = document.getElementById("matrix-canvas");
+    const ctx = matrixCanvas.getContext("2d");
+
+    matrixCanvas.width = window.innerWidth;
+    matrixCanvas.height = window.innerHeight;
+
+    const letters = "アァイィウヴエカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲンABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    const fontSize = 14;
+    const columns = matrixCanvas.width / fontSize;
+    const drops = Array(Math.floor(columns)).fill(1);
+
+    function drawMatrix() {
+      ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+      ctx.fillRect(0, 0, matrixCanvas.width, matrixCanvas.height);
+
+      ctx.fillStyle = "#0F0";
+      ctx.font = fontSize + "px monospace";
+
+      for (let i = 0; i < drops.length; i++) {
+        const text = letters[Math.floor(Math.random() * letters.length)];
+        ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+        if (drops[i] * fontSize > matrixCanvas.height && Math.random() > 0.975) {
+          drops[i] = 0;
+        }
+        drops[i]++;
+      }
+    }
+
+    let matrixInterval = null;
+
+    function startMatrix() {
+      matrixCanvas.style.display = "block";
+      if (!matrixInterval) {
+        matrixInterval = setInterval(drawMatrix, 33);
+      }
+    }
+
+    function stopMatrix() {
+      matrixCanvas.style.display = "none";
+      clearInterval(matrixInterval);
+      matrixInterval = null;
+    }
+
+  </script>
+</body>
+</html>
+
+
